@@ -1,3 +1,25 @@
 <resources>
     <string name="app_name">UAV Controller</string>
+    <string name="altitude">Altitude: </string>
+    <string name="altitude_format">%1$s m</string>
+    <string name="battery">Battery: </string>
+    <string name="battery_format">%1$s %%</string>
+    <string name="amount_of_x">Amount of X</string>
+    <string name="amount_of_y">Amount of Y</string>
+    <string name="connect">Connect</string>
+    <string name="connection_type">Connection Type</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="position">Position (Lat, Lng): </string>
+    <string name="position_format">(%1$s, %2$s)</string>
+    <string name="produced_x">X Produced: </string>
+    <string name="produced_y">Y Produced: </string>
+    <string name="production">Production</string>
+    <string name="start_production">Start Production</string>
+    <string name="speed">Speed: </string>
+    <string name="speed_format">%1$s m/s</string>
+    <string name="vehicle_telemetry">Telemetry</string>
+    <string-array name="connection_types">
+        <item>USB</item>
+        <item>UDP</item>
+    </string-array>
 </resources>

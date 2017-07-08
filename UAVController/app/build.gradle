@@ -23,4 +23,5 @@ dependencies {
     compile 'com.android.support:appcompat-v7:26.+'
     compile 'com.jakewharton:butterknife:8.7.0'
     annotationProcessor 'com.jakewharton:butterknife-compiler:8.7.0'
+    compile 'com.o3dr.android:dronekit-android:2.3.11'
 }
