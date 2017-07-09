@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 public class Utils {
+    public static final String PRODUCTION = "PRODUCTION";
+
     public static double round(double value, int places) {
         if (places < 0) throw new IllegalArgumentException();
 

@@ -22,4 +22,5 @@
         <item>USB</item>
         <item>UDP</item>
     </string-array>
+    <string name="title_activity_mission">UAV Mission</string>
 </resources>

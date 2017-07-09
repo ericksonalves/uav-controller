@@ -1,5 +1,6 @@
 package com.github.ericksonalves.uavcontroller.planner;
 
+import com.google.android.gms.maps.model.LatLng;
 import com.o3dr.android.client.Drone;
 import com.o3dr.android.client.apis.drone.ExperimentalApi;
 import com.o3dr.services.android.lib.coordinate.LatLong;
@@ -30,7 +31,7 @@ public class Planner {
         Y = new ProductionLine(-3.098101, -59.975911, yRule, 4);
         client = new LatLong(-3.098071, -59.975839);
         start = new LatLong(latitude, longitude);
-        warehouse = new LatLong(-3.098071, 59.975988);
+        warehouse = new LatLong(-3.098071, -59.975988);
         listeners = new ArrayList<>();
     }
 
@@ -40,6 +41,15 @@ public class Planner {
 
     public void removeListener(PlannerListener listener) {
         listeners.remove(listener);
+    }
+
+    public List<LatLng> getPoints() {
+        List<LatLng> points = new ArrayList<>();
+        points.add(new LatLng(client.getLatitude(), client.getLongitude()));
+        points.add(new LatLng(warehouse.getLatitude(), warehouse.getLongitude()));
+        points.add(new LatLng(X.position.getLatitude(), X.position.getLongitude()));
+        points.add(new LatLng(Y.position.getLatitude(), Y.position.getLongitude()));
+        return points;
     }
 
     public void plan(Drone drone, int xAmount, int yAmount) {

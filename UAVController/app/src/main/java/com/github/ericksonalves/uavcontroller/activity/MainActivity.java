@@ -1,10 +1,9 @@
 package com.github.ericksonalves.uavcontroller.activity;
 
-import android.os.AsyncTask;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
@@ -12,7 +11,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.github.ericksonalves.uavcontroller.R;
-import com.github.ericksonalves.uavcontroller.planner.Planner;
 import com.github.ericksonalves.uavcontroller.planner.PlannerListener;
 import com.github.ericksonalves.uavcontroller.util.Utils;
 import com.o3dr.android.client.ControlTower;
@@ -26,7 +24,6 @@ import com.o3dr.services.android.lib.drone.connection.ConnectionResult;
 import com.o3dr.services.android.lib.drone.connection.ConnectionType;
 import com.o3dr.services.android.lib.drone.property.Altitude;
 import com.o3dr.services.android.lib.drone.property.Battery;
-import com.o3dr.services.android.lib.drone.property.Gps;
 import com.o3dr.services.android.lib.drone.property.Speed;
 import com.o3dr.services.android.lib.drone.property.VehicleMode;
 
@@ -34,7 +31,7 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 
-public class MainActivity extends AppCompatActivity implements DroneListener, PlannerListener, TowerListener {
+public class MainActivity extends AppCompatActivity implements DroneListener, TowerListener {
     private static final int DEFAULT_UDP_PORT = 14550;
     private static final int DEFAULT_USB_BAUD_RATE = 57600;
     @BindView(R.id.button_connect)
@@ -55,14 +52,10 @@ public class MainActivity extends AppCompatActivity implements DroneListener, Pl
     public TextView batteryTextView;
     @BindView(R.id.text_view_position)
     public TextView positionTextView;
-    @BindView(R.id.text_view_produced_x)
-    public TextView producedXTextView;
-    @BindView(R.id.text_view_produced_y)
-    public TextView producedYTextView;
     @BindView(R.id.text_view_speed)
     public TextView speedTextView;
     private ControlTower mControlTower;
-    private Drone mDrone;
+    public static Drone sDrone;
     private Handler mHandler;
 
     @Override
@@ -71,7 +64,7 @@ public class MainActivity extends AppCompatActivity implements DroneListener, Pl
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
         mControlTower = new ControlTower(this);
-        mDrone = new Drone();
+        sDrone = new Drone();
         mHandler = new Handler();
     }
 
@@ -86,11 +79,11 @@ public class MainActivity extends AppCompatActivity implements DroneListener, Pl
     @Override
     protected void onStop() {
         super.onStop();
-        if (mDrone.isConnected()) {
-            mDrone.disconnect();
+        if (sDrone.isConnected()) {
+            sDrone.disconnect();
             toggleConnectionButtons(true);
         }
-        mControlTower.unregisterDrone(mDrone);
+        mControlTower.unregisterDrone(sDrone);
         mControlTower.disconnect();
     }
 
@@ -104,46 +97,25 @@ public class MainActivity extends AppCompatActivity implements DroneListener, Pl
             extraParams.putInt(ConnectionType.EXTRA_UDP_SERVER_PORT, DEFAULT_UDP_PORT);
         }
         ConnectionParameter connectionParams = new ConnectionParameter(selectedConnectionType, extraParams, null);
-        mDrone.connect(connectionParams);
+        sDrone.connect(connectionParams);
     }
 
     @OnClick(R.id.button_disconnect)
     public void onDisconnectButtonClicked() {
-        mDrone.disconnect();
+        sDrone.disconnect();
     }
 
     @OnClick(R.id.button_start_production)
     public void onStartProductionButtonClicked() {
-        amountOfXEditText.setEnabled(false);
-        amountOfYEditText.setEnabled(false);
-        startProductionButton.setEnabled(false);
-        updateProduction(0, 0);
-        AsyncTask.execute(new Runnable() {
-            @Override
-            public void run() {
-                double latitude = 0.0;
-                double longitude = 0.0;
-                Gps gps = mDrone.getAttribute(AttributeType.GPS);
-                if (gps != null && gps.getPosition() != null) {
-                    latitude = gps.getPosition().getLatitude();
-                    longitude = gps.getPosition().getLongitude();
-                }
-                Planner planner = new Planner(latitude, longitude);
-                int x = Integer.parseInt(amountOfXEditText.getText().toString());
-                int y = Integer.parseInt(amountOfYEditText.getText().toString());
-                planner.addListener(MainActivity.this);
-                planner.plan(mDrone, x, y);
-                planner.removeListener(MainActivity.this);
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        amountOfXEditText.setEnabled(true);
-                        amountOfYEditText.setEnabled(true);
-                        startProductionButton.setEnabled(true);
-                    }
-                });
-            }
-        });
+        if (amountOfXEditText.getText().length() == 0 || amountOfYEditText.getText().length() == 0) {
+            showToast("Please, specify the amount of products");
+        } else {
+            int x = Integer.parseInt(amountOfXEditText.getText().toString());
+            int y = Integer.parseInt(amountOfYEditText.getText().toString());
+            Intent intent = new Intent(this, MissionActivity.class);
+            intent.putExtra(Utils.PRODUCTION, new int[]{x, y});
+            startActivity(intent);
+        }
     }
 
     private void showToast(String message) {
@@ -173,11 +145,6 @@ public class MainActivity extends AppCompatActivity implements DroneListener, Pl
                 String.valueOf(latitude), String.valueOf(longitude)));
     }
 
-    private void updateProduction(int x, int y) {
-        producedXTextView.setText(String.valueOf(x));
-        producedYTextView.setText(String.valueOf(y));
-    }
-
     private void updateSpeed(double speed) {
         speedTextView.setText(String.format(getResources().getString(R.string.speed_format),
                 String.valueOf(Utils.round(speed, 3))));
@@ -204,23 +171,23 @@ public class MainActivity extends AppCompatActivity implements DroneListener, Pl
         switch (event) {
             case AttributeEvent.STATE_CONNECTED:
                 showToast("Drone Connected");
-                mDrone.changeVehicleMode(VehicleMode.COPTER_GUIDED);
+                sDrone.changeVehicleMode(VehicleMode.COPTER_GUIDED);
                 toggleConnectionButtons(false);
                 break;
             case AttributeEvent.STATE_DISCONNECTED:
                 showToast("Drone Disconnected");
-                toggleConnectionButtons(mDrone.isConnected());
+                toggleConnectionButtons(sDrone.isConnected());
                 break;
             case AttributeEvent.SPEED_UPDATED:
-                Speed speed = mDrone.getAttribute(AttributeType.SPEED);
+                Speed speed = sDrone.getAttribute(AttributeType.SPEED);
                 updateSpeed(speed.getGroundSpeed());
                 break;
             case AttributeEvent.ALTITUDE_UPDATED:
-                Altitude altitude = mDrone.getAttribute(AttributeType.ALTITUDE);
+                Altitude altitude = sDrone.getAttribute(AttributeType.ALTITUDE);
                 updateAltitude(altitude.getAltitude());
                 break;
             case AttributeEvent.BATTERY_UPDATED:
-                Battery battery = mDrone.getAttribute(AttributeType.BATTERY);
+                Battery battery = sDrone.getAttribute(AttributeType.BATTERY);
                 updateBattery(battery.getBatteryCurrent());
                 break;
             default:
@@ -235,39 +202,12 @@ public class MainActivity extends AppCompatActivity implements DroneListener, Pl
     @Override
     public void onTowerConnected() {
         showToast("3DR Services Connected");
-        mControlTower.registerDrone(mDrone, mHandler);
-        mDrone.registerDroneListener(this);
+        mControlTower.registerDrone(sDrone, mHandler);
+        sDrone.registerDroneListener(this);
     }
 
     @Override
     public void onTowerDisconnected() {
         showToast("3DR Services Interrupted");
-    }
-
-    @Override
-    public void onDelivered(final String product) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                int x = Integer.parseInt(producedXTextView.getText().toString());
-                int y = Integer.parseInt(producedYTextView.getText().toString());
-                if (product.equals("X")) {
-                    x++;
-                } else {
-                    y++;
-                }
-                updateProduction(x, y);
-            }
-        });
-    }
-
-    @Override
-    public void onPositionUpdated(final double latitude, final double longitude) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                updatePosition(latitude, longitude);
-            }
-        });
     }
 }
