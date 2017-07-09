@@ -11,7 +11,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.github.ericksonalves.uavcontroller.R;
-import com.github.ericksonalves.uavcontroller.planner.PlannerListener;
 import com.github.ericksonalves.uavcontroller.util.Utils;
 import com.o3dr.android.client.ControlTower;
 import com.o3dr.android.client.Drone;
@@ -25,6 +24,7 @@ import com.o3dr.services.android.lib.drone.connection.ConnectionType;
 import com.o3dr.services.android.lib.drone.property.Altitude;
 import com.o3dr.services.android.lib.drone.property.Battery;
 import com.o3dr.services.android.lib.drone.property.Speed;
+import com.o3dr.services.android.lib.drone.property.State;
 import com.o3dr.services.android.lib.drone.property.VehicleMode;
 
 import butterknife.BindView;
@@ -34,6 +34,8 @@ import butterknife.OnClick;
 public class MainActivity extends AppCompatActivity implements DroneListener, TowerListener {
     private static final int DEFAULT_UDP_PORT = 14550;
     private static final int DEFAULT_USB_BAUD_RATE = 57600;
+    @BindView(R.id.button_command)
+    public Button commandButton;
     @BindView(R.id.button_connect)
     public Button connectButton;
     @BindView(R.id.button_disconnect)
@@ -87,6 +89,18 @@ public class MainActivity extends AppCompatActivity implements DroneListener, To
         mControlTower.disconnect();
     }
 
+    @OnClick(R.id.button_command)
+    public void onCommandButtonClicked() {
+        State vehicleState = sDrone.getAttribute(AttributeType.STATE);
+        if (vehicleState.isFlying()) {
+            sDrone.changeVehicleMode(VehicleMode.COPTER_LAND);
+        } else if (vehicleState.isArmed()) {
+            sDrone.doGuidedTakeoff(1);
+        } else if (vehicleState.isConnected() && !vehicleState.isArmed()) {
+            sDrone.arm(true);
+        }
+    }
+
     @OnClick(R.id.button_connect)
     public void onConnectButtonClicked() {
         int selectedConnectionType = connectionTypeSpinner.getSelectedItemPosition();
@@ -128,6 +142,7 @@ public class MainActivity extends AppCompatActivity implements DroneListener, To
         amountOfXEditText.setEnabled(!state);
         amountOfYEditText.setEnabled(!state);
         startProductionButton.setEnabled(!state);
+        commandButton.setEnabled(!state);
     }
 
     private void updateAltitude(double altitude) {
@@ -138,6 +153,17 @@ public class MainActivity extends AppCompatActivity implements DroneListener, To
     private void updateBattery(double battery) {
         batteryTextView.setText(String.format(getResources().getString(R.string.battery_format), String.valueOf(Utils
                 .round(battery, 3))));
+    }
+
+    private void updateCommand() {
+        State vehicleState = sDrone.getAttribute(AttributeType.STATE);
+        if (vehicleState.isFlying()) {
+            commandButton.setText(R.string.land);
+        } else if (vehicleState.isArmed()) {
+            commandButton.setText(R.string.take_off);
+        } else if (vehicleState.isConnected()) {
+            commandButton.setText(R.string.arm);
+        }
     }
 
     private void updatePosition(double latitude, double longitude) {
@@ -173,10 +199,12 @@ public class MainActivity extends AppCompatActivity implements DroneListener, To
                 showToast("Drone Connected");
                 sDrone.changeVehicleMode(VehicleMode.COPTER_GUIDED);
                 toggleConnectionButtons(false);
+                updateCommand();
                 break;
             case AttributeEvent.STATE_DISCONNECTED:
                 showToast("Drone Disconnected");
                 toggleConnectionButtons(sDrone.isConnected());
+                updateCommand();
                 break;
             case AttributeEvent.SPEED_UPDATED:
                 Speed speed = sDrone.getAttribute(AttributeType.SPEED);
@@ -189,6 +217,10 @@ public class MainActivity extends AppCompatActivity implements DroneListener, To
             case AttributeEvent.BATTERY_UPDATED:
                 Battery battery = sDrone.getAttribute(AttributeType.BATTERY);
                 updateBattery(battery.getBatteryCurrent());
+                break;
+            case AttributeEvent.STATE_ARMING:
+            case AttributeEvent.STATE_UPDATED:
+                updateCommand();
                 break;
             default:
                 break;

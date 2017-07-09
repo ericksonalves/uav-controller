@@ -20,6 +20,8 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.util.List;
+
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
@@ -31,6 +33,7 @@ public class MissionActivity extends AppCompatActivity implements OnMapReadyCall
     @BindView(R.id.text_view_produced_y)
     public TextView producedYTextView;
     private GoogleMap mGoogleMap;
+    private List<LatLng> points;
     private MarkerOptions mDroneMarker;
     private int mX;
     private int mY;
@@ -52,15 +55,11 @@ public class MissionActivity extends AppCompatActivity implements OnMapReadyCall
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mGoogleMap = googleMap;
-        LatLngBounds.Builder builder = new LatLngBounds.Builder();
         double latitude = -3.098071;
-        double longitude = -59.975839;
+        double longitude = -59.975988;
         final Planner planner = new Planner(latitude, longitude);
-        for (LatLng point : planner.getPoints()) {
-            googleMap.addMarker(new MarkerOptions().position(point));
-            builder.include(point);
-        }
-        LatLngBounds bounds = builder.build();
+        points = planner.getPoints();
+        LatLngBounds bounds = drawPoints().build();
         CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngBounds(bounds, 50);
         mGoogleMap.animateCamera(cameraUpdate);
         mDroneMarker = new MarkerOptions().position(new LatLng(latitude, longitude)).icon
@@ -80,6 +79,16 @@ public class MissionActivity extends AppCompatActivity implements OnMapReadyCall
                 });
             }
         });
+    }
+
+    private LatLngBounds.Builder drawPoints() {
+        mGoogleMap.clear();
+        LatLngBounds.Builder builder = new LatLngBounds.Builder();
+        for (LatLng point : points) {
+            mGoogleMap.addMarker(new MarkerOptions().position(point));
+            builder.include(point);
+        }
+        return builder;
     }
 
     private void updateProduction(int x, int y) {
@@ -118,7 +127,11 @@ public class MissionActivity extends AppCompatActivity implements OnMapReadyCall
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                drawPoints();
                 updatePosition(latitude, longitude);
+                mDroneMarker = new MarkerOptions().position(new LatLng(latitude, longitude)).icon
+                        (BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
+                mGoogleMap.addMarker(mDroneMarker);
             }
         });
     }
